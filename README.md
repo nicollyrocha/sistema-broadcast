@@ -6,11 +6,17 @@ Envio de mensagens para vários contatos, na hora ou agendado. Monorepo com fron
 
 ## Funcionalidades
 
-- Selecionar um ou mais contatos
-- Escrever a mensagem
-- Enviar imediatamente ou agendar para data/horário futuros
-- Visualizar as mensagens criadas e filtrar entre enviadas e agendadas
-- Editar e excluir mensagens
+- **Autenticação**: login e cadastro com e-mail/senha ou Google, e recuperação de senha
+- **Conexões**: criar, listar, renomear e excluir
+- **Contatos** (por conexão): criar, listar, editar e excluir
+  - **Trazer de outra conexão**: ao criar um contato, é possível escolher contatos que já existem em outras
+    conexões. Eles são copiados para a conexão atual (mesmo nome e telefone); telefones que já estão nela são ignorados
+- **Broadcast**:
+  - Selecionar um ou mais contatos e escrever a mensagem
+  - Enviar imediatamente ou agendar para data/horário futuros
+  - Visualizar as mensagens criadas e filtrar entre enviadas e agendadas
+  - Editar e excluir mensagens
+- **Relatórios**: totais, envios por dia, próximos agendamentos e contatos que mais receberam mensagens
 
 ```
 /
@@ -18,7 +24,7 @@ Envio de mensagens para vários contatos, na hora ou agendado. Monorepo com fron
 ├── firestore.rules / storage.rules / firestore.indexes.json
 ├── functions/               # Firebase Cloud Functions (TypeScript, v2)
 │   └── src/
-│       ├── index.ts         # CRUD de conexões e contatos (onCall) + saveClient
+│       ├── index.ts         # CRUD de conexões e contatos, copyContacts e saveClient (onCall)
 │       ├── messageScheduler.ts # sendMessage/updateMessage/deleteMessage + processScheduledMessages (a cada minuto)
 │       ├── firebase.ts      # Admin SDK + região (southamerica-east1)
 │       └── lib.ts           # validações e helpers
@@ -76,6 +82,8 @@ firebase emulators:start
   `resource.data.clientId == request.auth.uid` e bloqueiam qualquer escrita direta do navegador.
 - **Escritas** passam pelas Cloud Functions (callables). As regras do Firestore só liberam **leitura** dos próprios dados.
 - **Leituras** usam `onSnapshot`: as telas atualizam em tempo real.
+- **Trazer contatos**: `copyContacts` confere se os contatos de origem são do cliente e cria cópias na conexão
+  de destino. Cópias são independentes: editar ou excluir uma não afeta o contato original.
 - **Envio (simulado)**: `sendMessage` grava a mensagem com status `sent` (sem data) ou `scheduled` (data futura).
   O `processScheduledMessages` roda a cada minuto e muda as agendadas vencidas para `sent`, sem depender do app aberto.
 
