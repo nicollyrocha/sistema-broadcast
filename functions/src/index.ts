@@ -1,4 +1,4 @@
-import { onCall } from "firebase-functions/v2/https";
+import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { FieldValue } from "firebase-admin/firestore";
 import { db } from "./firebase";
 import { deleteByConnection, getOwnedDoc, requirePhone, requireString, requireUid } from "./lib";
@@ -89,6 +89,49 @@ export const createContact = onCall(async (request) => {
     updatedAt: FieldValue.serverTimestamp(),
   });
   return { id: ref.id };
+});
+
+/**
+ * Traz contatos de outras conexões do cliente para esta (cria cópias com o mesmo nome e telefone).
+ * Telefones que já existem na conexão de destino são ignorados.
+ */
+export const copyContacts = onCall(async (request) => {
+  const uid = requireUid(request);
+  const connection = await getOwnedDoc("connections", request.data?.connectionId, uid);
+  const ids: unknown = request.data?.contactIds;
+  if (!Array.isArray(ids) || ids.length === 0 || ids.length > 500) {
+    throw new HttpsError("invalid-argument", "Selecione de 1 a 500 contatos.");
+  }
+
+  const sources = await db.getAll(...ids.map((id) => db.doc(`contacts/${requireString(id, "contactIds")}`)));
+  if (sources.some((s) => !s.exists || s.get("clientId") !== uid)) {
+    throw new HttpsError("not-found", "Algum contato selecionado não foi encontrado.");
+  }
+
+  const existing = await db
+    .collection("contacts")
+    .where("clientId", "==", uid)
+    .where("connectionId", "==", connection.id)
+    .get();
+  const phones = new Set(existing.docs.map((doc) => doc.get("phone")));
+
+  const batch = db.batch();
+  let copied = 0;
+  for (const source of sources) {
+    if (phones.has(source.get("phone"))) continue;
+    phones.add(source.get("phone"));
+    copied++;
+    batch.set(db.collection("contacts").doc(), {
+      clientId: uid,
+      connectionId: connection.id,
+      name: source.get("name"),
+      phone: source.get("phone"),
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+  }
+  await batch.commit();
+  return { copied };
 });
 
 export const updateContact = onCall(async (request) => {

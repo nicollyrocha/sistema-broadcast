@@ -24,6 +24,8 @@ export const createContact = callable<{ connectionId: string; name: string; phon
 export const updateContact = callable<{ connectionId: string; id: string; name: string; phone: string }>(
   "updateContact",
 );
+/** Copia contatos de outras conexões para esta; telefones já existentes nela são ignorados. */
+export const copyContacts = callable<{ connectionId: string; contactIds: string[] }, { copied: number }>("copyContacts");
 export const deleteContact = callable<{ connectionId: string; id: string }>("deleteContact");
 
 // Mensagens

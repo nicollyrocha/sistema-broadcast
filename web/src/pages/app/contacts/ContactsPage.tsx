@@ -15,6 +15,9 @@ import Avatar from '@mui/material/Avatar'
 import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
 import Checkbox from '@mui/material/Checkbox'
+import List from '@mui/material/List'
+import ListItemButton from '@mui/material/ListItemButton'
+import ListItemText from '@mui/material/ListItemText'
 import IconButton from '@mui/material/IconButton'
 import InputAdornment from '@mui/material/InputAdornment'
 import MenuItem from '@mui/material/MenuItem'
@@ -27,18 +30,25 @@ import TableContainer from '@mui/material/TableContainer'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import TextField from '@mui/material/TextField'
+import ToggleButton from '@mui/material/ToggleButton'
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import Tooltip from '@mui/material/Tooltip'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { FormDialog } from '@/components/ui/FormDialog'
 import { ROUTES } from '@/config/routes'
-import { useContacts } from '@/hooks/useRealtime'
+import { useAllContacts, useContacts } from '@/hooks/useRealtime'
 import {
   CONNECTION_PARAM,
   useSelectedConnection,
 } from '@/hooks/useSelectedConnection'
-import { createContact, deleteContact, updateContact } from '@/services/api'
+import {
+  copyContacts,
+  createContact,
+  deleteContact,
+  updateContact,
+} from '@/services/api'
 import { formatPhone, initials } from '@/lib/format'
-import type { Contact } from '@/types'
+import type { Connection, Contact } from '@/types'
 
 /** Diálogo aberto: criar (null), editar (Contact) ou fechado (undefined). */
 type Editing = Contact | null | undefined
@@ -339,7 +349,9 @@ export default function ContactsPage() {
       {connection && (
         <>
           <ContactDialog
-            connectionId={connection.id}
+            connection={connection}
+            connections={connections}
+            contacts={contacts}
             editing={editing}
             onClose={() => setEditing(undefined)}
           />
@@ -383,60 +395,197 @@ function Header({
   )
 }
 
+/** Contatos de outras conexões que ainda não estão nesta (um por telefone). */
+function importableContacts(
+  all: Contact[],
+  connectionId: string,
+  current: Contact[],
+) {
+  const phones = new Set(current.map((c) => c.phone))
+  return all.filter((c) => {
+    if (c.connectionId === connectionId || phones.has(c.phone)) return false
+    phones.add(c.phone)
+    return true
+  })
+}
+
 function ContactDialog({
-  connectionId,
+  connection,
+  connections,
+  contacts,
   editing,
   onClose,
 }: {
-  connectionId: string
+  connection: Connection
+  connections: Connection[]
+  contacts: Contact[]
   editing: Editing
   onClose: () => void
 }) {
+  const [mode, setMode] = useState<'new' | 'import'>('new')
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
+  const [search, setSearch] = useState('')
+  const [importIds, setImportIds] = useState<string[]>([])
+
+  const open = editing !== undefined
+  const importing = editing === null && mode === 'import'
   const digits = phone.replace(/\D/g, '')
   const phoneValid = digits.length >= 10 && digits.length <= 13
 
+  // Só assina todos os contatos enquanto o diálogo de criação estiver aberto
+  const { data: allContacts } = useAllContacts(open && editing === null)
+  const importable = importableContacts(allContacts, connection.id, contacts)
+  const term = search.trim().toLowerCase()
+  const listed = importable.filter((c) => c.name.toLowerCase().includes(term))
+  const connectionName = (id: string) =>
+    connections.find((c) => c.id === id)?.name ?? ''
+
+  const toggle = (id: string) =>
+    setImportIds((ids) =>
+      ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id],
+    )
+
+  function submit() {
+    if (editing) {
+      return updateContact({
+        connectionId: connection.id,
+        id: editing.id,
+        name,
+        phone,
+      })
+    }
+    if (importing) {
+      return copyContacts({ connectionId: connection.id, contactIds: importIds })
+    }
+    return createContact({ connectionId: connection.id, name, phone })
+  }
+
+  function submitLabel() {
+    if (editing) return 'Salvar'
+    if (!importing) return 'Adicionar contato'
+    if (importIds.length === 1) return 'Adicionar 1 contato'
+    return importIds.length > 0
+      ? `Adicionar ${importIds.length} contatos`
+      : 'Adicionar contatos'
+  }
+
   return (
     <FormDialog
-      open={editing !== undefined}
+      open={open}
       title={editing ? 'Editar contato' : 'Novo contato'}
-      submitLabel={editing ? 'Salvar' : 'Adicionar contato'}
-      canSubmit={name.trim().length > 0 && phoneValid}
+      submitLabel={submitLabel()}
+      canSubmit={
+        importing ? importIds.length > 0 : name.trim().length > 0 && phoneValid
+      }
       onEnter={() => {
+        setMode('new')
         setName(editing?.name ?? '')
         setPhone(editing ? formatPhone(editing.phone) : '')
+        setSearch('')
+        setImportIds([])
       }}
-      onSubmit={() =>
-        editing
-          ? updateContact({ connectionId, id: editing.id, name, phone })
-          : createContact({ connectionId, name, phone })
-      }
+      onSubmit={submit}
       onClose={onClose}
     >
-      <TextField
-        label="Nome"
-        autoFocus
-        required
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        slotProps={{ htmlInput: { maxLength: 200 } }}
-      />
-      <TextField
-        label="Telefone"
-        placeholder="(11) 98812-3401"
-        type="tel"
-        required
-        value={phone}
-        onChange={(e) => setPhone(e.target.value)}
-        error={phone.length > 0 && !phoneValid}
-        helperText={
-          phone.length > 0 && !phoneValid
-            ? 'Informe DDD + número (10 a 13 dígitos).'
-            : 'Com DDD. O código do país é opcional.'
-        }
-        slotProps={{ formHelperText: { className: 'mx-0' } }}
-      />
+      {editing === null && (
+        <ToggleButtonGroup
+          exclusive
+          fullWidth
+          size="small"
+          value={mode}
+          onChange={(_, v) => v && setMode(v)}
+        >
+          <ToggleButton value="new" className="normal-case">
+            Novo
+          </ToggleButton>
+          <ToggleButton value="import" className="normal-case">
+            De outra conexão
+          </ToggleButton>
+        </ToggleButtonGroup>
+      )}
+
+      {importing ? (
+        importable.length === 0 ? (
+          <p className="py-6 text-center text-sm text-zinc-500">
+            Não há contatos de outras conexões para trazer.
+          </p>
+        ) : (
+          <Card>
+            <TextField
+              placeholder="Buscar contato..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="[&_fieldset]:border-0 [&_.MuiOutlinedInput-root]:rounded-none [&_.Mui-focused]:shadow-none"
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Search className="size-4 text-zinc-400" />
+                    </InputAdornment>
+                  ),
+                },
+              }}
+            />
+            <List
+              dense
+              disablePadding
+              className="max-h-64 overflow-y-auto border-t border-zinc-100"
+            >
+              {listed.map((c) => (
+                <ListItemButton
+                  key={c.id}
+                  className="gap-3 px-3"
+                  onClick={() => toggle(c.id)}
+                >
+                  <Checkbox
+                    size="small"
+                    edge="start"
+                    disableRipple
+                    checked={importIds.includes(c.id)}
+                    tabIndex={-1}
+                    className="p-0"
+                  />
+                  <ListItemText
+                    primary={c.name}
+                    secondary={`${formatPhone(c.phone)} · ${connectionName(c.connectionId)}`}
+                    slotProps={{
+                      primary: { className: 'truncate text-sm font-medium' },
+                      secondary: { className: 'text-xs tabular-nums' },
+                    }}
+                  />
+                </ListItemButton>
+              ))}
+            </List>
+          </Card>
+        )
+      ) : (
+        <>
+          <TextField
+            label="Nome"
+            autoFocus
+            required
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            slotProps={{ htmlInput: { maxLength: 200 } }}
+          />
+          <TextField
+            label="Telefone"
+            placeholder="(11) 98812-3401"
+            type="tel"
+            required
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            error={phone.length > 0 && !phoneValid}
+            helperText={
+              phone.length > 0 && !phoneValid
+                ? 'Informe DDD + número (10 a 13 dígitos).'
+                : 'Com DDD. O código do país é opcional.'
+            }
+            slotProps={{ formHelperText: { className: 'mx-0' } }}
+          />
+        </>
+      )}
     </FormDialog>
   )
 }

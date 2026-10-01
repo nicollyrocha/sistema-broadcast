@@ -57,19 +57,27 @@ export function subscribeConnections(onChange: (items: Connection[]) => void, on
   );
 }
 
+const toContact = (id: string, data: DocumentData): Contact => ({
+  id,
+  connectionId: data.connectionId,
+  name: data.name,
+  phone: data.phone,
+  createdAt: toIso(data.createdAt) ?? "",
+  updatedAt: toIso(data.updatedAt),
+});
+
 export function subscribeContacts(connectionId: string, onChange: (items: Contact[]) => void, onError?: OnError) {
   return listen(
     query(collection(db, "contacts"), ownedBy(), where("connectionId", "==", connectionId), orderBy("name")),
-    (id, data) => ({
-      id,
-      name: data.name,
-      phone: data.phone,
-      createdAt: toIso(data.createdAt) ?? "",
-      updatedAt: toIso(data.updatedAt),
-    }),
+    toContact,
     onChange,
     onError,
   );
+}
+
+/** Todos os contatos do cliente, de todas as conexões (para trazer contatos de outra conexão). */
+export function subscribeAllContacts(onChange: (items: Contact[]) => void, onError?: OnError) {
+  return listen(query(collection(db, "contacts"), ownedBy(), orderBy("name")), toContact, onChange, onError);
 }
 
 /**

@@ -21,11 +21,10 @@ export interface Message {
 
 export interface Contact {
   id: string;
+  connectionId: string;
   name: string;
   /** Só dígitos, ex.: 5511999998888 */
   phone: string;
-  /** Usado apenas pelos mocks de layout */
-  email?: string;
   createdAt: string;
   updatedAt?: string;
 }

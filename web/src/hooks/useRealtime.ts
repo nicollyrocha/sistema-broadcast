@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { subscribeConnections, subscribeContacts, subscribeMessages } from "@/services/realtime";
+import { subscribeAllContacts, subscribeConnections, subscribeContacts, subscribeMessages } from "@/services/realtime";
 import type { Connection, Contact, Message } from "@/types";
 
 interface RealtimeState<T> {
@@ -40,6 +40,10 @@ export const useContacts = (connectionId: string | undefined) =>
     connectionId ? (onChange, onError) => subscribeContacts(connectionId, onChange, onError) : null,
     [connectionId],
   );
+
+/** Todos os contatos do cliente; só assina quando `enabled` (ex.: diálogo aberto). */
+export const useAllContacts = (enabled: boolean) =>
+  useSubscription<Contact>(enabled ? (onChange, onError) => subscribeAllContacts(onChange, onError) : null, [enabled]);
 
 export const useMessages = (connectionId: string | undefined) =>
   useSubscription<Message>(
