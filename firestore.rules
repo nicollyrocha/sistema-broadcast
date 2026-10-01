@@ -1,9 +1,33 @@
 rules_version = '2';
+
+// Isolamento multi-tenant: todo documento tem o clientId do dono (uid do Firebase Auth).
+// - Leitura: só o dono. Uma query do front só passa se filtrar por clientId == uid.
+// - Escrita: bloqueada no cliente. Tudo passa pelas Cloud Functions (Admin SDK),
+//   que pegam o clientId do token e validam a posse antes de alterar.
 service cloud.firestore {
   match /databases/{database}/documents {
-    // TODO: regras por workspace (workspaces/{workspaceId}/...)
-    match /{document=**} {
-      allow read, write: if false;
+    function isOwner(clientId) {
+      return request.auth != null && request.auth.uid == clientId;
+    }
+
+    match /clients/{clientId} {
+      allow read: if isOwner(clientId);
+      allow write: if false;
+    }
+
+    match /connections/{id} {
+      allow read: if isOwner(resource.data.clientId);
+      allow write: if false;
+    }
+
+    match /contacts/{id} {
+      allow read: if isOwner(resource.data.clientId);
+      allow write: if false;
+    }
+
+    match /messages/{id} {
+      allow read: if isOwner(resource.data.clientId);
+      allow write: if false;
     }
   }
 }

@@ -1,25 +1,31 @@
-export type Channel = "whatsapp" | "email" | "sms";
-export type CampaignStatus = "draft" | "scheduled" | "sending" | "sent" | "paused" | "failed";
+export type MessageStatus = "sent" | "scheduled";
 
-export interface Campaign {
+export interface Connection {
   id: string;
   name: string;
-  channel: Channel;
-  status: CampaignStatus;
-  audience: string;
-  recipients: number;
-  delivered: number;
-  opened: number;
-  clicked: number;
-  date: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface Message {
+  id: string;
+  content: string;
+  contactIds: string[];
+  status: MessageStatus;
+  /** ISO — preenchido quando agendada */
+  scheduledAt?: string;
+  /** ISO — preenchido quando enviada */
+  sentAt?: string;
+  createdAt: string;
 }
 
 export interface Contact {
   id: string;
   name: string;
-  email: string;
+  /** Só dígitos, ex.: 5511999998888 */
   phone: string;
-  tags: string[];
-  status: "subscribed" | "unsubscribed" | "bounced";
+  /** Usado apenas pelos mocks de layout */
+  email?: string;
   createdAt: string;
+  updatedAt?: string;
 }

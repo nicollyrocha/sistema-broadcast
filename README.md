@@ -1,6 +1,14 @@
-# Ecoa — Broadcast multicanal
+# Ecoa — Broadcast de mensagens
 
-Disparos em massa por WhatsApp, e-mail e SMS. Monorepo com frontend e Firebase Cloud Functions.
+Envio de mensagens para vários contatos, na hora ou agendado. Monorepo com frontend e Firebase Cloud Functions.
+
+## Funcionalidades
+
+- Selecionar um ou mais contatos
+- Escrever a mensagem
+- Enviar imediatamente ou agendar para data/horário futuros
+- Visualizar as mensagens criadas e filtrar entre enviadas e agendadas
+- Editar e excluir mensagens
 
 ```
 /
@@ -8,14 +16,10 @@ Disparos em massa por WhatsApp, e-mail e SMS. Monorepo com frontend e Firebase C
 ├── firestore.rules / storage.rules / firestore.indexes.json
 ├── functions/               # Firebase Cloud Functions (TypeScript, v2)
 │   └── src/
-│       ├── index.ts         # exporta todas as funções
-│       ├── callable/        # onCall — chamadas autenticadas do /web
-│       ├── http/            # onRequest — webhooks (WhatsApp, Stripe)
-│       ├── triggers/        # Auth / Firestore triggers
-│       ├── scheduled/       # onSchedule — disparo de campanhas agendadas
-│       ├── services/        # integrações com provedores
-│       ├── lib/             # admin SDK, erros
-│       └── types/
+│       ├── index.ts         # CRUD de conexões e contatos (onCall) + saveClient
+│       ├── messageScheduler.ts # sendMessage/updateMessage/deleteMessage + processScheduledMessages (a cada minuto)
+│       ├── firebase.ts      # Admin SDK + região (southamerica-east1)
+│       └── lib.ts           # validações e helpers
 └── web/                     # React 19 + Vite + TypeScript + Tailwind v4 + React Router
     └── src/
         ├── app/             # router, providers, ProtectedRoute
@@ -23,34 +27,35 @@ Disparos em massa por WhatsApp, e-mail e SMS. Monorepo com frontend e Firebase C
         ├── pages/
         │   ├── errors/      # 404
         │   ├── auth/        # Login, Cadastro, Recuperar senha
-        │   └── app/         # Dashboard, Inbox, Campanhas, Automações, Templates,
-        │                    # Contatos, Audiências, Relatórios, Canais, Assinatura, Configurações
-        ├── components/      # layout/ (Sidebar, Topbar, Logo) · ui/ (seus componentes)
+        │   └── app/         # Caixa de entrada, Conexões, Contatos, Relatórios, Configurações
+        ├── components/      # layout/ (Sidebar, Topbar, Logo) · ui/ (FormDialog, ConfirmDialog)
         ├── config/          # rotas, navegação da sidebar, mapas de status/canal
-        ├── contexts/        # AuthContext (stub)
-        ├── services/        # acesso a Firestore/Functions
-        ├── hooks/
+        ├── contexts/        # AuthContext (onAuthStateChanged)
+        ├── services/        # api.ts (callables), realtime.ts (onSnapshot), auth.ts
+        ├── hooks/           # useConnections/useContacts/useMessages (tempo real), useSelectedConnection
         ├── lib/             # firebase.ts, format.ts (cn, números, moeda)
-        ├── mocks/           # dados estáticos só para visualizar o layout
-        ├── styles/          # index.css — tokens de design + classes base
+        ├── styles/          # index.css — tokens Tailwind + ordem das camadas
+        ├── theme/           # theme.ts — tema MUI
         └── types/
 ```
 
-## Design system
+## UI: MUI + Tailwind
 
-Tokens e primitivas em `web/src/styles/index.css`. Combine classes direto no JSX:
+- **Componentes**: [MUI](https://mui.com) (`@mui/material`) — Button, TextField, Card, Table, Chip, Drawer, Dialog, etc.
+- **Estilização**: Tailwind via `className` direto nos componentes MUI. Ícones: `lucide-react`.
+- **Tema MUI**: `web/src/theme/theme.ts` (cores da marca, fonte Geist, overrides de componentes).
+- **Tokens Tailwind**: `web/src/styles/index.css` (`brand-50…950`, sombras, utilitários `page-title`, `nav-item`).
 
-| Classe | Uso |
-| --- | --- |
-| `btn` + `btn-primary` / `btn-secondary` / `btn-ghost` / `btn-dark` / `btn-danger` / `btn-outline-light` | botões; tamanhos `btn-sm`, `btn-lg`, `btn-icon` |
-| `card`, `card-header`, `card-title`, `card-body` | superfícies |
-| `input`, `label`, `hint`, `checkbox` | formulários |
-| `badge` + `badge-success` / `warning` / `danger` / `info` / `brand` / `neutral`, `badge-dot` | status |
-| `table` | tabelas |
-| `tabs` / `tab active`, `nav-item active` | navegação |
-| `page-title`, `page-subtitle`, `eyebrow`, `kbd` | tipografia |
+Como os dois convivem (`web/src/app/providers.tsx`): `StyledEngineProvider enableCssLayer` coloca o MUI em
+`@layer mui`, e um `GlobalStyles` fixa a ordem `theme, base, mui, components, utilities`. Assim o reset do
+Tailwind não quebra o MUI e qualquer utility do Tailwind sobrescreve o MUI sem `!important`:
 
-Cor da marca: `brand-50…950` (laranja `#ff5a1f`). Superfícies escuras: `night-700…950`. Fonte: Geist.
+```tsx
+<Button variant="contained" className="rounded-full px-6">Enviar</Button>
+```
+
+Para estilizar partes internas de um componente, use `slotProps` (ex.: `slotProps={{ input: { className: "bg-zinc-50" } }}`)
+ou seletores arbitrários (`[&_.MuiOutlinedInput-notchedOutline]:border-0`).
 
 ## Rodando
 
@@ -60,12 +65,17 @@ cd functions && npm install && npm run build
 firebase emulators:start
 ```
 
-## Próximos passos (lógica)
+## Como funciona
 
-- `contexts/AuthContext.tsx` → `onAuthStateChanged`; `app/ProtectedRoute.tsx` → redirecionar sem usuário.
-- Trocar `mocks/data.ts` por `services/*` + hooks.
-- Stepper de nova campanha, filtros, abas de configurações e toggles hoje são estáticos.
-- Gráficos do Dashboard/Relatórios são barras em CSS — substituir por uma lib de gráficos.
+- **Dados** (Firestore, sem subcoleções): `clients/{uid}`, `connections`, `contacts` e `messages`.
+  Cada usuário do Auth é um cliente; todo documento guarda o `clientId` do dono, e contatos/mensagens guardam o `connectionId`.
+- **Isolamento entre clientes**: o `clientId` é sempre preenchido pelas functions a partir do token (nunca vem do front),
+  e toda alteração confere se o documento é do cliente logado. As regras do Firestore só liberam leitura quando
+  `resource.data.clientId == request.auth.uid` e bloqueiam qualquer escrita direta do navegador.
+- **Escritas** passam pelas Cloud Functions (callables). As regras do Firestore só liberam **leitura** dos próprios dados.
+- **Leituras** usam `onSnapshot`: as telas atualizam em tempo real.
+- **Envio (simulado)**: `sendMessage` grava a mensagem com status `sent` (sem data) ou `scheduled` (data futura).
+  O `processScheduledMessages` roda a cada minuto e muda as agendadas vencidas para `sent`, sem depender do app aberto.
 
 ## Deploy (Firebase Hosting)
 

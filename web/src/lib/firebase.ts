@@ -15,7 +15,7 @@ const app = initializeApp({
 
 export const auth = getAuth(app);
 export const db = getFirestore(app);
-export const functions = getFunctions(app, "us-central1");
+export const functions = getFunctions(app, "southamerica-east1");
 export const storage = getStorage(app);
 
 if (import.meta.env.VITE_USE_EMULATORS === "true") {

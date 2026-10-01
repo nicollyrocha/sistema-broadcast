@@ -1,5 +1,6 @@
 import { Link } from "react-router";
 import { ArrowLeft } from "lucide-react";
+import Button from "@mui/material/Button";
 import { ROUTES } from "@/config/routes";
 import { Logo } from "@/components/layout/Logo";
 
@@ -10,11 +11,11 @@ export default function NotFoundPage() {
       <div className="relative">
         <Logo dark className="justify-center" />
         <p className="text-gradient mt-12 text-8xl font-semibold tracking-tighter">404</p>
-        <h1 className="mt-4 text-xl font-semibold text-white">Esta página saiu do ar.</h1>
+        <h1 className="mt-4 text-xl font-semibold text-white">Esta página não existe.</h1>
         <p className="mt-2 text-zinc-400">O link pode estar quebrado ou a página foi removida.</p>
-        <Link to={ROUTES.app} className="btn btn-primary mt-8">
-          <ArrowLeft /> Voltar ao painel
-        </Link>
+        <Button component={Link} to={ROUTES.app} variant="contained" className="mt-8" startIcon={<ArrowLeft className="size-4" />}>
+          Voltar ao painel
+        </Button>
       </div>
     </div>
   );

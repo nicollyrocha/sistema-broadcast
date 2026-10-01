@@ -1,62 +1,132 @@
-import { Link } from "react-router";
+import { useState, type FormEvent } from "react";
+import { Link as RouterLink } from "react-router";
 import { Check } from "lucide-react";
+import Alert from "@mui/material/Alert";
+import Button from "@mui/material/Button";
+import Checkbox from "@mui/material/Checkbox";
+import Divider from "@mui/material/Divider";
+import FormControlLabel from "@mui/material/FormControlLabel";
+import Link from "@mui/material/Link";
+import TextField from "@mui/material/TextField";
 import { ROUTES } from "@/config/routes";
+import { cn } from "@/lib/format";
+import { authErrorMessage, signInWithGoogle, signUp } from "@/services/auth";
 import { GoogleIcon } from "./GoogleIcon";
 
+const PASSWORD_RULES: { label: string; test: (p: string) => boolean }[] = [
+  { label: "8+ caracteres", test: (p) => p.length >= 8 },
+  { label: "1 número", test: (p) => /\d/.test(p) },
+  { label: "1 letra maiúscula", test: (p) => /[A-Z]/.test(p) },
+  { label: "1 símbolo", test: (p) => /[^A-Za-z0-9]/.test(p) },
+];
+
+// O redirecionamento após o cadastro é feito pelo AuthLayout, quando o usuário aparece no AuthContext.
 export default function RegisterPage() {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [accepted, setAccepted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const passwordOk = PASSWORD_RULES.every((r) => r.test(password));
+  const canSubmit = name.trim() && email.trim() && passwordOk && accepted && !submitting;
+
+  async function run(action: () => Promise<unknown>) {
+    setError(null);
+    setSubmitting(true);
+    try {
+      await action();
+    } catch (e) {
+      setError(authErrorMessage(e));
+      setSubmitting(false);
+    }
+  }
+
+  function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (canSubmit) run(() => signUp(name, email, password));
+  }
+
   return (
     <>
-      <span className="badge badge-brand">14 dias grátis · sem cartão</span>
-      <h1 className="mt-4 text-2xl font-semibold tracking-tight">Crie sua conta</h1>
-      <p className="mt-2 text-sm text-zinc-500">Comece a disparar campanhas em minutos.</p>
+      <h1 className="text-2xl font-semibold tracking-tight">Crie sua conta</h1>
+      <p className="mt-2 text-sm text-zinc-500">Comece a enviar mensagens em minutos.</p>
 
-      <button type="button" className="btn btn-secondary btn-lg mt-8 w-full">
-        <GoogleIcon /> Cadastrar com Google
-      </button>
+      <Button
+        variant="outlined"
+        size="large"
+        fullWidth
+        className="mt-8"
+        startIcon={<GoogleIcon />}
+        disabled={submitting}
+        onClick={() => run(signInWithGoogle)}
+      >
+        Cadastrar com Google
+      </Button>
 
-      <div className="my-6 flex items-center gap-3 text-xs text-zinc-400">
-        <span className="h-px flex-1 bg-zinc-200" /> ou <span className="h-px flex-1 bg-zinc-200" />
-      </div>
+      <Divider className="my-6 text-xs text-zinc-400">ou</Divider>
 
-      <form className="space-y-4">
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="label" htmlFor="name">Nome</label>
-            <input id="name" className="input" placeholder="Seu nome" autoComplete="name" />
-          </div>
-          <div>
-            <label className="label" htmlFor="company">Empresa</label>
-            <input id="company" className="input" placeholder="Empresa" autoComplete="organization" />
-          </div>
-        </div>
+      <form className="space-y-4" onSubmit={handleSubmit} noValidate>
+        {error && <Alert severity="error">{error}</Alert>}
+        <TextField label="Nome" autoComplete="name" required value={name} onChange={(e) => setName(e.target.value)} />
+        <TextField
+          label="E-mail"
+          type="email"
+          placeholder="voce@empresa.com"
+          autoComplete="email"
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
         <div>
-          <label className="label" htmlFor="email">E-mail corporativo</label>
-          <input id="email" type="email" className="input" placeholder="voce@empresa.com" autoComplete="email" />
-        </div>
-        <div>
-          <label className="label" htmlFor="password">Senha</label>
-          <input id="password" type="password" className="input" placeholder="Mínimo 8 caracteres" autoComplete="new-password" />
+          <TextField
+            label="Senha"
+            type="password"
+            autoComplete="new-password"
+            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
           <ul className="mt-2 grid grid-cols-2 gap-1 text-xs text-zinc-500">
-            {["8+ caracteres", "1 número", "1 letra maiúscula", "1 símbolo"].map((r) => (
-              <li key={r} className="flex items-center gap-1.5">
-                <Check className="size-3 text-zinc-300" /> {r}
-              </li>
-            ))}
+            {PASSWORD_RULES.map((r) => {
+              const ok = r.test(password);
+              return (
+                <li key={r.label} className={cn("flex items-center gap-1.5", ok && "text-emerald-600")}>
+                  <Check className={cn("size-3", ok ? "text-emerald-500" : "text-zinc-300")} /> {r.label}
+                </li>
+              );
+            })}
           </ul>
         </div>
-        <label className="flex items-start gap-2 text-sm text-zinc-600">
-          <input type="checkbox" className="checkbox mt-0.5" />
-          <span>
-            Concordo com os <a href="#" className="font-medium text-zinc-900 underline-offset-2 hover:underline">Termos</a> e a{" "}
-            <a href="#" className="font-medium text-zinc-900 underline-offset-2 hover:underline">Política de Privacidade</a>.
-          </span>
-        </label>
-        <button type="submit" className="btn btn-primary btn-lg w-full">Criar conta</button>
+        <FormControlLabel
+          className="items-start"
+          control={
+            <Checkbox
+              size="small"
+              className="-mt-1.5"
+              checked={accepted}
+              onChange={(e) => setAccepted(e.target.checked)}
+            />
+          }
+          slotProps={{ typography: { className: "text-sm text-zinc-600" } }}
+          label={
+            <>
+              Concordo com os <Link href="#" underline="hover" className="font-medium text-zinc-900">Termos</Link> e a{" "}
+              <Link href="#" underline="hover" className="font-medium text-zinc-900">Política de Privacidade</Link>.
+            </>
+          }
+        />
+        <Button type="submit" variant="contained" size="large" fullWidth disabled={!canSubmit}>
+          {submitting ? "Criando conta..." : "Criar conta"}
+        </Button>
       </form>
 
       <p className="mt-8 text-center text-sm text-zinc-500">
         Já tem uma conta?{" "}
-        <Link to={ROUTES.login} className="font-medium text-zinc-900 hover:text-brand-600">Entrar</Link>
+        <Link component={RouterLink} to={ROUTES.login} underline="hover" className="font-medium text-zinc-900">
+          Entrar
+        </Link>
       </p>
     </>
   );
