@@ -1,0 +1,20 @@
+export const ROUTES = {
+  login: "/login",
+  register: "/cadastro",
+  forgotPassword: "/recuperar-senha",
+
+  app: "/app",
+  inbox: "/app/caixa-de-entrada",
+  campaigns: "/app/campanhas",
+  campaignNew: "/app/campanhas/nova",
+  campaignDetail: (id: string) => `/app/campanhas/${id}`,
+  automations: "/app/automacoes",
+  templates: "/app/templates",
+  contacts: "/app/contatos",
+  contactDetail: (id: string) => `/app/contatos/${id}`,
+  audiences: "/app/audiencias",
+  reports: "/app/relatorios",
+  channels: "/app/canais",
+  billing: "/app/assinatura",
+  settings: "/app/configuracoes",
+} as const;

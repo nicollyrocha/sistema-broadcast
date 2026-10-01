@@ -1,0 +1,203 @@
+@import "tailwindcss";
+
+/* ───────────── Design tokens ───────────── */
+@theme {
+  --font-sans: "Geist", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, monospace;
+
+  /* Cor da marca — "sinal" laranja */
+  --color-brand-50: #fff5ef;
+  --color-brand-100: #ffe8d9;
+  --color-brand-200: #ffcdb0;
+  --color-brand-300: #ffa97a;
+  --color-brand-400: #ff7d45;
+  --color-brand-500: #ff5a1f;
+  --color-brand-600: #ed4210;
+  --color-brand-700: #c5310e;
+  --color-brand-800: #9c2913;
+  --color-brand-900: #7e2513;
+  --color-brand-950: #440f06;
+
+  /* Superfícies escuras (landing / auth) */
+  --color-night-950: #09090b;
+  --color-night-900: #111113;
+  --color-night-800: #18181b;
+  --color-night-700: #27272a;
+
+  --radius-card: 0.875rem;
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.04), 0 1px 1px rgb(0 0 0 / 0.02);
+  --shadow-pop: 0 12px 32px -12px rgb(0 0 0 / 0.18), 0 2px 6px rgb(0 0 0 / 0.04);
+  --shadow-glow: 0 0 0 1px rgb(255 90 31 / 0.4), 0 8px 40px -8px rgb(255 90 31 / 0.55);
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    @apply bg-zinc-50 font-sans text-zinc-900;
+  }
+  ::selection {
+    @apply bg-brand-200 text-brand-950;
+  }
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-brand-500;
+  }
+}
+
+/* ───────────── Primitivas (combine classes) ─────────────
+   Ex.: <button className="btn btn-primary btn-lg"> */
+@layer components {
+  /* Botões */
+  .btn {
+    @apply inline-flex h-9 shrink-0 cursor-pointer items-center justify-center gap-2 rounded-lg px-3.5 text-sm font-medium whitespace-nowrap transition-all duration-150 select-none disabled:pointer-events-none disabled:opacity-50 [&_svg]:size-4;
+  }
+  .btn-sm {
+    @apply h-8 rounded-md px-2.5 text-[13px];
+  }
+  .btn-lg {
+    @apply h-11 rounded-xl px-5 text-[15px];
+  }
+  .btn-icon {
+    @apply size-9 px-0;
+  }
+  .btn-primary {
+    @apply bg-brand-500 text-white shadow-[inset_0_1px_0_rgb(255_255_255/0.2),0_1px_2px_rgb(0_0_0/0.1)] hover:bg-brand-600 active:bg-brand-700;
+  }
+  .btn-secondary {
+    @apply border border-zinc-200 bg-white text-zinc-800 shadow-card hover:border-zinc-300 hover:bg-zinc-50;
+  }
+  .btn-ghost {
+    @apply text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900;
+  }
+  .btn-dark {
+    @apply bg-zinc-900 text-white hover:bg-zinc-800;
+  }
+  .btn-danger {
+    @apply bg-red-600 text-white hover:bg-red-700;
+  }
+  .btn-outline-light {
+    @apply border border-white/15 bg-white/5 text-white backdrop-blur hover:bg-white/10;
+  }
+
+  /* Cards */
+  .card {
+    @apply rounded-(--radius-card) border border-zinc-200/80 bg-white shadow-card;
+  }
+  .card-header {
+    @apply flex items-center justify-between gap-4 border-b border-zinc-100 px-5 py-4;
+  }
+  .card-title {
+    @apply text-sm font-semibold text-zinc-900;
+  }
+  .card-body {
+    @apply p-5;
+  }
+
+  /* Formulários */
+  .label {
+    @apply mb-1.5 block text-[13px] font-medium text-zinc-700;
+  }
+  .input {
+    @apply h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm text-zinc-900 shadow-card transition placeholder:text-zinc-400 hover:border-zinc-300 focus:border-brand-400 focus:ring-4 focus:ring-brand-500/10 focus:outline-none;
+  }
+  .textarea {
+    @apply h-auto min-h-28 py-2.5;
+  }
+  .hint {
+    @apply mt-1.5 text-xs text-zinc-500;
+  }
+  .checkbox {
+    @apply size-4 rounded border-zinc-300 accent-brand-500;
+  }
+
+  /* Badges */
+  .badge {
+    @apply inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap ring-1 ring-inset;
+  }
+  .badge-dot {
+    @apply size-1.5 rounded-full bg-current;
+  }
+  .badge-neutral {
+    @apply bg-zinc-50 text-zinc-600 ring-zinc-200;
+  }
+  .badge-success {
+    @apply bg-emerald-50 text-emerald-700 ring-emerald-600/15;
+  }
+  .badge-warning {
+    @apply bg-amber-50 text-amber-700 ring-amber-600/20;
+  }
+  .badge-danger {
+    @apply bg-red-50 text-red-700 ring-red-600/15;
+  }
+  .badge-info {
+    @apply bg-sky-50 text-sky-700 ring-sky-600/15;
+  }
+  .badge-brand {
+    @apply bg-brand-50 text-brand-700 ring-brand-600/20;
+  }
+
+  /* Tabelas */
+  .table {
+    @apply w-full text-left text-sm;
+  }
+  .table thead th {
+    @apply border-b border-zinc-100 bg-zinc-50/60 px-5 py-2.5 text-xs font-medium tracking-wide whitespace-nowrap text-zinc-500 uppercase;
+  }
+  .table tbody td {
+    @apply border-b border-zinc-100 px-5 py-3.5 text-zinc-700;
+  }
+  .table tbody tr {
+    @apply transition-colors hover:bg-zinc-50/70;
+  }
+  .table tbody tr:last-child td {
+    @apply border-b-0;
+  }
+
+  /* Navegação lateral */
+  .nav-item {
+    @apply flex h-9 items-center gap-3 rounded-lg px-2.5 text-sm font-medium text-zinc-600 transition hover:bg-zinc-200/50 hover:text-zinc-900 [&_svg]:size-[18px] [&_svg]:text-zinc-400;
+  }
+  .nav-item.active {
+    @apply bg-white text-zinc-900 shadow-card ring-1 ring-zinc-200/80 [&_svg]:text-brand-500;
+  }
+
+  /* Abas */
+  .tabs {
+    @apply flex gap-1 overflow-x-auto border-b border-zinc-200;
+  }
+  .tab {
+    @apply -mb-px cursor-pointer border-b-2 border-transparent px-3 pb-3 text-sm font-medium whitespace-nowrap text-zinc-500 transition hover:text-zinc-900;
+  }
+  .tab.active {
+    @apply border-brand-500 text-zinc-900;
+  }
+
+  /* Tipografia de página */
+  .page-title {
+    @apply text-2xl font-semibold tracking-tight text-zinc-900;
+  }
+  .page-subtitle {
+    @apply mt-1 text-sm text-zinc-500;
+  }
+  .eyebrow {
+    @apply text-xs font-semibold tracking-[0.14em] text-brand-500 uppercase;
+  }
+
+  .kbd {
+    @apply rounded border border-zinc-200 bg-zinc-50 px-1.5 font-mono text-[11px] text-zinc-500;
+  }
+}
+
+@utility bg-grid {
+  background-image:
+    linear-gradient(to right, rgb(255 255 255 / 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(255 255 255 / 0.05) 1px, transparent 1px);
+  background-size: 56px 56px;
+}
+
+@utility text-gradient {
+  background-image: linear-gradient(to bottom, #fff, rgb(255 255 255 / 0.6));
+  background-clip: text;
+  color: transparent;
+}
