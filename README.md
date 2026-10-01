@@ -2,6 +2,8 @@
 
 Envio de mensagens para vários contatos, na hora ou agendado. Monorepo com frontend e Firebase Cloud Functions.
 
+**Acesse:** https://sistema-broadcast.web.app
+
 ## Funcionalidades
 
 - Selecionar um ou mais contatos
