@@ -1,1 +1,12 @@
-{ "projects": { "default": "seu-projeto-firebase" } }
+{
+  "projects": {
+    "default": "sistema-broadcast"
+  },
+  "targets": {
+    "sistema-broadcast": {
+      "hosting": {
+        "web": ["sistema-broadcast"]
+      }
+    }
+  }
+}

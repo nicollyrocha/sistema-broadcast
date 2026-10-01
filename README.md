@@ -66,3 +66,25 @@ firebase emulators:start
 - Trocar `mocks/data.ts` por `services/*` + hooks.
 - Stepper de nova campanha, filtros, abas de configurações e toggles hoje são estáticos.
 - Gráficos do Dashboard/Relatórios são barras em CSS — substituir por uma lib de gráficos.
+
+## Deploy (Firebase Hosting)
+
+Projeto: `sistema-broadcast` → https://sistema-broadcast.web.app
+
+```bash
+npm run deploy:preview    # canal de preview (expira em 7 dias), não afeta produção
+npm run deploy:hosting    # produção
+npm run deploy:functions
+```
+
+O `predeploy` do hosting roda o build do `/web` automaticamente.
+
+### CI (GitHub Actions)
+
+- `firebase-hosting-merge.yml` — push na `main` → deploy em produção
+- `firebase-hosting-pull-request.yml` — cada PR ganha uma URL de preview comentada no PR
+
+Secrets necessários no repositório (Settings → Secrets and variables → Actions):
+
+- `FIREBASE_SERVICE_ACCOUNT_SISTEMA_BROADCAST` — JSON de uma service account com papel *Firebase Hosting Admin*
+- `VITE_FIREBASE_*` — mesmos valores do `web/.env`

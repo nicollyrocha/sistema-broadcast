@@ -1,0 +1,12 @@
+{
+  "name": "sistema-broadcast",
+  "private": true,
+  "scripts": {
+    "dev": "npm --prefix web run dev",
+    "build": "npm --prefix web run build",
+    "deploy": "firebase deploy",
+    "deploy:hosting": "firebase deploy --only hosting:web",
+    "deploy:functions": "firebase deploy --only functions",
+    "deploy:preview": "firebase hosting:channel:deploy preview --only web --expires 7d"
+  }
+}
